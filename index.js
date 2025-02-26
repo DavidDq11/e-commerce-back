@@ -11,6 +11,9 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false } // Necesario para Neon Tech
 });
 
+const cors = require('cors');
+app.use(cors()); // Habilita CORS para todas las solicitudes
+
 // Middleware para permitir CORS (para que Angular pueda acceder)
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
@@ -29,23 +32,28 @@ app.get('/', (req, res) => {
 // Endpoint para obtener todos los productos
 app.get('/products', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM products');
-        // Transformar rating_rate y rating_count a un objeto "rating" para coincidir con tu JSON original
-        const transformed = result.rows.map(row => ({
-            ...row,
-            rating: {
-                rate: row.rating_rate,
-                count: row.rating_count
-            },
-            rating_rate: undefined,
-            rating_count: undefined
-        }));
-        res.json(transformed);
+      const result = await pool.query('SELECT * FROM products');
+      const transformed = result.rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        category: row.category,
+        type: row.type,
+        sizes: row.sizes ? row.sizes : [],
+        images: row.images ? row.images : [],
+        price: row.price,
+        prevprice: row.prevprice,
+        stock: row.stock,
+        rating: {
+          rate: row.rating_rate,
+          count: row.rating_count
+        }
+      }));
+      res.json(transformed);
     } catch (error) {
-        console.error('Error al consultar la base de datos:', error);
-        res.status(500).send('Error en el servidor');
+      res.status(500).json({ message: error.message });
     }
-});
+  });
 
 // Iniciar el servidor
 app.listen(port, () => {
