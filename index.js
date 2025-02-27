@@ -15,8 +15,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Usar rutas de productos con prefijo /api
-app.use('/api', productRoutes);
+// Usar rutas de productos sin prefijo /api, directamente desde la raíz
+app.use('/', productRoutes); 
 
 // Ruta raíz para probar el servidor
 app.get('/', (req, res) => {
