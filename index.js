@@ -31,4 +31,10 @@ app.listen(port, () => {
   console.log(`Servidor corriendo en http://localhost:${port}`);
 });
 
+const corsOptions = {
+  origin: 'http://localhost:4200', // Add your deployed frontend URL later
+  optionsSuccessStatus: 200 // For legacy browser support
+};
+app.use(cors(corsOptions));
+
 module.exports = app; // Opcional, para pruebas
