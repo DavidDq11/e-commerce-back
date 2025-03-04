@@ -1,6 +1,7 @@
-const express = require('express');
+import express from 'express';
+import pool from '../config/db.js';
+
 const router = express.Router();
-const pool = require('../config/db');
 
 // Función para transformar los datos de la base de datos
 const transformProduct = (row) => ({
@@ -49,4 +50,4 @@ router.get('/product/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router; 

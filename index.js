@@ -1,22 +1,23 @@
-const express = require('express');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import productRoutes from './routes/productroutes.js';
+import userRoutes from './routes/userRoutes.js'; // Corrected case sensitivity
+import errorHandler from './middleware/errorHandler.js';
+
+// Cargar variables de entorno
+dotenv.config();
+
 const app = express();
 const port = process.env.PORT || 3000;
-const cors = require('cors');
-const productRoutes = require('./routes/productroutes');
-const errorHandler = require('./middleware/errorHandler');
 
-app.use(express.json()); // Middleware para parsear JSON
-app.use(cors()); // Habilita CORS para todas las solicitudes
-
-// Middleware personalizado para CORS (opcional, ya cubierto por cors())
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  next();
-});
+// Middleware
+app.use(express.json()); 
+app.use(cors());
 
 // Usar rutas de productos con prefijo /api
 app.use('/api', productRoutes);
+app.use('/api', userRoutes); // Mount user routes
 
 // Ruta raíz para probar el servidor
 app.get('/', (req, res) => {
@@ -31,10 +32,8 @@ app.listen(port, () => {
   console.log(`Servidor corriendo en http://localhost:${port}`);
 });
 
-const corsOptions = {
-  origin: 'http://localhost:4200', // Add your deployed frontend URL later
-  optionsSuccessStatus: 200 // For legacy browser support
-};
-app.use(cors(corsOptions));
 
-module.exports = app; // Opcional, para pruebas
+app.use(express.json());
+
+
+export default app; // Para pruebas y compatibilidad
