@@ -1,6 +1,6 @@
 // services/user-service.js
 import { createUser, findUserByEmail } from '../models/user.js';
-import bcrypt from 'bcrypt';
+const bcrypt = require('bcryptjs');
 import jwt from 'jsonwebtoken';
 
 const saltRounds = 10;
