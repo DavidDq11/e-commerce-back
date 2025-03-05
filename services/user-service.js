@@ -7,7 +7,6 @@ const saltRounds = 10;
 
 export class UserService {
     static async register(userData) {
-        console.log('Datos recibidos en UserService:', userData); // Para depurar
         const { first_name, last_name, email, password } = userData;
         const existingUser = await findUserByEmail(email);
         if (existingUser) {
@@ -24,6 +23,15 @@ export class UserService {
             throw new Error('Invalid credentials');
         }
         const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        return token;
+        // Devuelve un objeto con el token y los datos del usuario
+        return {
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                first_name: user.first_name,
+                last_name: user.last_name
+            }
+        };
     }
 }
