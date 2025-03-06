@@ -21,39 +21,53 @@ const transformProduct = (row) => ({
   }
 });
 
+// Mapeo de categorías de la URL a tipos en la base de datos
+const typeMap = {
+  'Food': 'Alimento',
+  'Toys': 'Juguete',
+  'Hygiene': 'Higiene',
+  'Accessories': 'Accesorio',
+  'Snacks': 'Snack',
+  'Habitats': 'Habitat',
+  'Equipment': 'Equipo',
+  'Supplements': 'Suplemento'
+};
+
+// Obtener todos los productos (con soporte para paginación y filtrado)
 // Obtener todos los productos (con soporte para paginación y filtrado)
 router.get('/products', async (req, res) => {
   try {
-    const { category, limit = 1000, offset = 0 } = req.query; // Aumenté el límite por defecto para simular "todos"
+    const { category, limit = 1000, offset = 0 } = req.query;
     let query = 'SELECT * FROM products';
     let params = [];
 
     if (category) {
-      query += ' WHERE category = $1';
-      params.push(category);
+      // Mapear la categoría de la URL a un valor en la base de datos
+      const mappedCategory = typeMap[category] || category; // Si no está en el mapa, usar el valor original
+      query += ' WHERE category = $1'; // Cambiar 'type' por 'category'
+      params.push(mappedCategory);
+      console.log('Consulta SQL:', query, 'con params:', params); // Log para depuración
     }
 
-    // Agregar LIMIT y OFFSET solo si se especifican valores válidos
-    if (limit !== '1000' || offset !== '0') { // Evitar paginación si no se especifica
+    if (limit !== '1000' || offset !== '0') {
       query += ' LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
       params.push(Number(limit), Number(offset));
     }
 
     const result = await pool.query(query, params);
     const totalResult = await pool.query(
-      'SELECT COUNT(*) FROM products' + (category ? ' WHERE category = $1' : ''),
-      category ? [category] : []
+      'SELECT COUNT(*) FROM products' + (category ? ' WHERE category = $1' : ''), // Ajustar también aquí
+      category ? [typeMap[category] || category] : []
     );
     const total = parseInt(totalResult.rows[0].count);
 
     const transformed = result.rows.map(transformProduct);
+    console.log('Resultados transformados:', transformed); // Log para depuración
 
-    // Si no se especifica paginación, devolver solo el array para compatibilidad
     if (!req.query.limit && !req.query.offset && !req.query.category) {
-      return res.status(200).json(transformed); // Compatible con la versión anterior
+      return res.status(200).json(transformed);
     }
 
-    // Devolver formato paginado
     res.status(200).json({
       products: transformed,
       total,
@@ -61,7 +75,7 @@ router.get('/products', async (req, res) => {
       totalPages: Math.ceil(total / Number(limit))
     });
   } catch (error) {
-    console.error('Error en /products:', error); // Log para depuración
+    console.error('Error en /products:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -84,4 +98,4 @@ router.get('/product/:id', async (req, res) => {
   }
 });
 
-export default router;  
+export default router;
