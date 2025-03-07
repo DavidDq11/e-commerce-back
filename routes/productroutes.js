@@ -34,19 +34,20 @@ const typeMap = {
 };
 
 // Obtener todos los productos (con soporte para paginación y filtrado)
-// Obtener todos los productos (con soporte para paginación y filtrado)
 router.get('/products', async (req, res) => {
   try {
-    const { category, limit = 1000, offset = 0 } = req.query;
+    const { category, type, limit = 1000, offset = 0 } = req.query;
     let query = 'SELECT * FROM products';
     let params = [];
 
     if (category) {
-      // Mapear la categoría de la URL a un valor en la base de datos
-      const mappedCategory = typeMap[category] || category; // Si no está en el mapa, usar el valor original
-      query += ' WHERE category = $1'; // Cambiar 'type' por 'category'
+      const mappedCategory = typeMap[category] || category;
+      query += ' WHERE category = $1';
       params.push(mappedCategory);
-      console.log('Consulta SQL:', query, 'con params:', params); // Log para depuración
+    } else if (type) {
+      const mappedType = typeMap[type] || type;
+      query += ' WHERE type = $1';
+      params.push(mappedType);
     }
 
     if (limit !== '1000' || offset !== '0') {
@@ -56,15 +57,15 @@ router.get('/products', async (req, res) => {
 
     const result = await pool.query(query, params);
     const totalResult = await pool.query(
-      'SELECT COUNT(*) FROM products' + (category ? ' WHERE category = $1' : ''), // Ajustar también aquí
-      category ? [typeMap[category] || category] : []
+      'SELECT COUNT(*) FROM products' +
+        (category ? ' WHERE category = $1' : type ? ' WHERE type = $1' : ''),
+      category ? [typeMap[category] || category] : type ? [typeMap[type] || type] : []
     );
     const total = parseInt(totalResult.rows[0].count);
 
     const transformed = result.rows.map(transformProduct);
-    console.log('Resultados transformados:', transformed); // Log para depuración
 
-    if (!req.query.limit && !req.query.offset && !req.query.category) {
+    if (!req.query.limit && !req.query.offset && !req.query.category && !req.query.type) {
       return res.status(200).json(transformed);
     }
 
