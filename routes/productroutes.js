@@ -1,5 +1,7 @@
 import express from 'express';
 import pool from '../config/db.js';
+import getProducts from "../services/rocketfy-service.js";
+import { getOrders } from "../services/rocketfy-service.js";
 
 const router = express.Router();
 
@@ -96,6 +98,25 @@ router.get('/product/:id', async (req, res) => {
     res.status(200).json(transformProduct(product));
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/rocketfy-products", async (req, res) => {
+  try {
+    const products = await getProducts();
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: "Error al obtener productos de Rocketfy" });
+  }
+});
+
+
+router.get("/rocketfy-orders", async (req, res) => {
+  try {
+    const orders = await getOrders();
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: "Error al obtener órdenes" });
   }
 });
 
