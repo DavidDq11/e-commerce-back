@@ -16,8 +16,8 @@ const transformProduct = (row) => ({
   prevprice: row.prevprice,
   stock: row.stock,
   rating: {
-    rate: row.rating_rate,
-    count: row.rating_count
+    rate: row.rating_rate || 0, // Valor por defecto si es null
+    count: row.rating_count || 0 // Valor por defecto si es null
   }
 });
 
@@ -40,6 +40,8 @@ router.get('/products', async (req, res) => {
     let query = 'SELECT * FROM products';
     let params = [];
 
+    console.log('Parámetros recibidos:', { category, type, limit, offset });
+
     if (category) {
       const mappedCategory = typeMap[category] || category;
       query += ' WHERE category = $1';
@@ -55,7 +57,10 @@ router.get('/products', async (req, res) => {
       params.push(Number(limit), Number(offset));
     }
 
+    console.log('Ejecutando consulta:', query, params);
     const result = await pool.query(query, params);
+    console.log('Filas devueltas:', result.rows);
+
     const totalResult = await pool.query(
       'SELECT COUNT(*) FROM products' +
         (category ? ' WHERE category = $1' : type ? ' WHERE type = $1' : ''),
@@ -63,7 +68,10 @@ router.get('/products', async (req, res) => {
     );
     const total = parseInt(totalResult.rows[0].count);
 
-    const transformed = result.rows.map(transformProduct);
+    const transformed = result.rows.map(row => {
+      console.log('Transformando fila:', row);
+      return transformProduct(row);
+    });
 
     if (!req.query.limit && !req.query.offset && !req.query.category && !req.query.type) {
       return res.status(200).json(transformed);
@@ -76,8 +84,8 @@ router.get('/products', async (req, res) => {
       totalPages: Math.ceil(total / Number(limit))
     });
   } catch (error) {
-    console.error('Error en /products:', error);
-    res.status(500).json({ message: error.message });
+    console.error('Error en /products:', error.stack);
+    res.status(500).json({ message: error.message, stack: error.stack });
   }
 });
 
