@@ -81,7 +81,6 @@ router.get('/products', async (req, res) => {
   }
 });
 
-// Obtener un producto por ID
 router.get('/product/:id', async (req, res) => {
   try {
     const { id } = req.params;
