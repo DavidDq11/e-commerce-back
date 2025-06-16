@@ -14,25 +14,20 @@ const transformProduct = (row) => ({
   brand: row.brand_name || null,
   sizes: row.sizes || [],
   images: row.images || [],
-  price: row.min_price || null, // Use the minimum price from sizes
-  prevprice: null, // Not in DB, set to null or calculate if needed
-  stock: row.total_stock || 0,
+  price: row.min_price || null,
+  prevprice: null,
+  stock: row.total_stock > 0 ? 'In stock' : 'Out of stock', // Ajustado para coincidir con el frontend
   rating: {
-    rate: 0, // Placeholder until ratings table is implemented
-    count: 0 // Placeholder
+    rate: 0,
+    count: 0
   }
 });
 
-// Mapeo de categorías de la URL a tipos en la base de datos
+// Mapeo de categorías de la URL a categorías/tipos en la base de datos
 const typeMap = {
-  'Food': 'Alimento',
-  'Toys': 'Juguete',
-  'Hygiene': 'Higiene',
-  'Accessories': 'Accesorio',
-  'Snacks': 'Snack',
-  'Habitats': 'Habitat',
-  'Equipment': 'Equipo',
-  'Supplements': 'Suplemento'
+  'Food': ['Pet Food', 'Wet Food'], // Combina Pet Food y Wet Food
+  'Snacks': 'Pet Treats',
+  'Hygiene': 'Litter'
 };
 
 // Obtener todos los productos (con soporte para paginación y filtrado)
@@ -85,14 +80,25 @@ router.get('/products', async (req, res) => {
     console.log('Parámetros recibidos:', { category, type, animal_category, limit, offset });
 
     if (category) {
-      const mappedCategory = typeMap[category] || category;
-      whereClauses.push('p.category = $' + (params.length + 1));
-      params.push(mappedCategory);
+      const mappedCategory = typeMap[category];
+      if (Array.isArray(mappedCategory)) {
+        // Si es un array (como Food), filtrar por múltiples categorías
+        whereClauses.push('p.category = ANY($' + (params.length + 1) + ')');
+        params.push(mappedCategory);
+      } else {
+        whereClauses.push('p.category = $' + (params.length + 1));
+        params.push(mappedCategory);
+      }
     }
     if (type) {
       const mappedType = typeMap[type] || type;
-      whereClauses.push('p.type = $' + (params.length + 1));
-      params.push(mappedType);
+      if (Array.isArray(mappedType)) {
+        whereClauses.push('p.type = ANY($' + (params.length + 1) + ')');
+        params.push(mappedType);
+      } else {
+        whereClauses.push('p.type = $' + (params.length + 1));
+        params.push(mappedType);
+      }
     }
     if (animal_category) {
       whereClauses.push('p.animal_category = $' + (params.length + 1));
