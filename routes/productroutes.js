@@ -14,32 +14,27 @@ const transformProduct = (row) => ({
   brand: row.brand_name || null,
   sizes: row.sizes || [],
   images: row.images || [],
-  price: row.min_price || null, // Use the minimum price from sizes
-  prevprice: null, // Not in DB, set to null or calculate if needed
+  price: row.min_price || null,
+  prevprice: null,
   stock: row.total_stock || 0,
   rating: {
-    rate: 0, // Placeholder until ratings table is implemented
-    count: 0 // Placeholder
+    rate: 0,
+    count: 0
   }
 });
 
 // Mapeo de categorías de la URL a tipos en la base de datos
 const typeMap = {
-  'DryFood': 'Pet Food', // Añadir este mapeo
-  'Food': 'Alimento',
-  'Toys': 'Juguete',
-  'Hygiene': 'Higiene',
-  'Accessories': 'Accesorio',
-  'Snacks': 'Snack',
-  'Habitats': 'Habitat',
-  'Equipment': 'Equipo',
-  'Supplements': 'Suplemento'
+  'DryFood': 'Pet Food',
+  'WetFood': 'Wet Food',
+  'Snacks': 'Pet Treats',
+  'Litter': 'Litter'
 };
 
 // Obtener todos los productos (con soporte para paginación y filtrado)
 router.get('/products', async (req, res) => {
   try {
-    const { category, type, animal_category, limit = 1000, offset = 0 } = req.query;
+    const { category, type, animal_category, limit = 25, offset = 0 } = req.query; // Default limit to 25
     let query = `
       SELECT 
         p.id,
@@ -92,6 +87,9 @@ router.get('/products', async (req, res) => {
       if (category === 'DryFood') {
         whereClauses.push('p.type = $' + (params.length + 1));
         params.push('Food');
+      } else if (category === 'WetFood') {
+        whereClauses.push('p.type = $' + (params.length + 1));
+        params.push('Food'); // Adjust based on your DB schema
       }
     }
     if (type) {
@@ -110,7 +108,7 @@ router.get('/products', async (req, res) => {
 
     query += ' GROUP BY p.id, p.title, p.description, p.category, p.type, p.animal_category, b.name';
 
-    if (limit !== '1000' || offset !== '0') {
+    if (limit !== '25' || offset !== '0') { // Changed default limit to 25
       query += ' LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
       params.push(Number(limit), Number(offset));
     }
@@ -124,7 +122,7 @@ router.get('/products', async (req, res) => {
     let countParams = [];
     if (whereClauses.length > 0) {
       countQuery += ' WHERE ' + whereClauses.join(' AND ');
-      countParams = params.slice(0, params.length - (limit !== '1000' || offset !== '0' ? 2 : 0));
+      countParams = params.slice(0, params.length - (limit !== '25' || offset !== '0' ? 2 : 0)); // Changed default limit to 25
     }
     const totalResult = await pool.query(countQuery, countParams);
     const total = parseInt(totalResult.rows[0].count);
