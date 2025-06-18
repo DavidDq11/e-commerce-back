@@ -34,7 +34,7 @@ const typeMap = {
 // Obtener todos los productos (con soporte para paginación y filtrado)
 router.get('/products', async (req, res) => {
   try {
-    const { category, type, animal_category, limit = 25, offset = 0 } = req.query; // Default limit to 25
+    const { category, limit = 25, offset = 0 } = req.query;
     let query = `
       SELECT 
         p.id,
@@ -78,28 +78,10 @@ router.get('/products', async (req, res) => {
     let params = [];
     let whereClauses = [];
 
-    console.log('Parámetros recibidos:', { category, type, animal_category, limit, offset });
-
     if (category) {
       const mappedCategory = typeMap[category] || category;
       whereClauses.push('p.category = $' + (params.length + 1));
       params.push(mappedCategory);
-      if (category === 'DryFood') {
-        whereClauses.push('p.type = $' + (params.length + 1));
-        params.push('Food');
-      } else if (category === 'WetFood') {
-        whereClauses.push('p.type = $' + (params.length + 1));
-        params.push('Food'); // Adjust based on your DB schema
-      }
-    }
-    if (type) {
-      const mappedType = typeMap[type] || type;
-      whereClauses.push('p.type = $' + (params.length + 1));
-      params.push(mappedType);
-    }
-    if (animal_category) {
-      whereClauses.push('p.animal_category = $' + (params.length + 1));
-      params.push(animal_category);
     }
 
     if (whereClauses.length > 0) {
@@ -107,39 +89,25 @@ router.get('/products', async (req, res) => {
     }
 
     query += ' GROUP BY p.id, p.title, p.description, p.category, p.type, p.animal_category, b.name';
+    query += ' LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
+    params.push(Number(limit), Number(offset));
 
-    if (limit !== '25' || offset !== '0') { // Changed default limit to 25
-      query += ' LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
-      params.push(Number(limit), Number(offset));
-    }
-
-    console.log('Ejecutando consulta:', query, params);
     const result = await pool.query(query, params);
-    console.log('Filas devueltas:', result.rows.length);
+    const transformed = result.rows.map(row => transformProduct(row));
 
-    // Contar el total de productos
+    // Calculate total independently
     let countQuery = 'SELECT COUNT(DISTINCT p.id) FROM products p';
     let countParams = [];
     if (whereClauses.length > 0) {
       countQuery += ' WHERE ' + whereClauses.join(' AND ');
-      countParams = params.slice(0, params.length - (limit !== '25' || offset !== '0' ? 2 : 0)); // Changed default limit to 25
+      countParams = params.slice(0, params.length - 2);
     }
     const totalResult = await pool.query(countQuery, countParams);
     const total = parseInt(totalResult.rows[0].count);
 
-    const transformed = result.rows.map(row => {
-      console.log('Transformando fila:', row);
-      return transformProduct(row);
-    });
-
-    if (!req.query.limit && !req.query.offset && !req.query.category && !req.query.type && !req.query.animal_category) {
-      return res.status(200).json(transformed);
-    }
-
     res.status(200).json({
       products: transformed,
       total,
-      page: Math.floor(Number(offset) / Number(limit)) + 1,
       totalPages: Math.ceil(total / Number(limit))
     });
   } catch (error) {
