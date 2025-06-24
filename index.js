@@ -2,38 +2,31 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import productRoutes from './routes/productroutes.js';
-import userRoutes from './routes/userRoutes.js'; // Corrected case sensitivity
+import userRoutes from './routes/userRoutes.js';
+import orderRoutes from './routes/orderRoutes.js'; // Nueva ruta
 import errorHandler from './middleware/errorHandler.js';
 
-// Cargar variables de entorno
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
-app.use(express.json()); 
+app.use(express.json());
 app.use(cors());
 
-// Usar rutas de productos con prefijo /api
+// Usar rutas
 app.use('/api', productRoutes);
-app.use('/api', userRoutes); // Mount user routes
+app.use('/api', userRoutes);
+app.use('/api', orderRoutes); // Agregar rutas de pedidos
 
-// Ruta raíz para probar el servidor
 app.get('/', (req, res) => {
   res.send('¡Backend conectado a Neon Tech!');
 });
 
-// Middleware de manejo de errores
 app.use(errorHandler);
 
-// Iniciar el servidor
 app.listen(port, () => {
   console.log(`Servidor corriendo en http://localhost:${port}`);
 });
 
-
-app.use(express.json());
-
-
-export default app; // Para pruebas y compatibilidad
+export default app;
