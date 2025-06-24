@@ -16,7 +16,7 @@ const transformProduct = (row) => ({
   images: row.images || [],
   price: row.min_price || null,
   prevprice: null,
-  stock: row.total_stock || 0,
+  stock: row.total_stock > 0 ? 'In stock' : 'Out of stock',
   rating: {
     rate: 0,
     count: 0
