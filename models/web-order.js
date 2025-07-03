@@ -12,22 +12,43 @@ export const createWebOrder = async (orderData) => {
     transaction_id
   } = orderData;
 
+  // Validar que los campos JSON sean objetos válidos
+  if (typeof items !== 'object' || items === null) {
+    throw new Error('Invalid items format. Must be a valid JSON object or array.');
+  }
+  if (typeof shipping_address !== 'object' || shipping_address === null) {
+    throw new Error('Invalid shipping_address format. Must be a valid JSON object.');
+  }
+  if (billing_address && typeof billing_address !== 'object') {
+    throw new Error('Invalid billing_address format. Must be a valid JSON object.');
+  }
+
+  // Serializar explícitamente los objetos JSON
+  const serializedItems = JSON.stringify(items);
+  const serializedShippingAddress = JSON.stringify(shipping_address);
+  const serializedBillingAddress = billing_address ? JSON.stringify(billing_address) : null;
+
   const query = `
     INSERT INTO web_orders (user_id, items, shipping_address, billing_address, payment_method, total, order_number, transaction_id)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb, $5, $6, $7, $8)
     RETURNING id, user_id, items, shipping_address, billing_address, payment_method, total, created_at, status, order_number, transaction_id;
   `;
   const values = [
     user_id,
-    items,
-    shipping_address,
-    billing_address,
+    serializedItems,
+    serializedShippingAddress,
+    serializedBillingAddress,
     payment_method,
     total,
-    order_number,
+    order_number || `WEB-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     transaction_id
   ];
 
-  const result = await pool.query(query, values);
-  return result.rows[0];
+  try {
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Database error:', error.stack);
+    throw error;
+  }
 };

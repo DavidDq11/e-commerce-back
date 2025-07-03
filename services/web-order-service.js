@@ -8,7 +8,10 @@ export class WebOrderService {
     }
 
     // Generar un número de pedido único (ejemplo simple)
-    const orderNumber = `WEB-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const datePart = new Date().toISOString().split('T')[0].replace(/-/g, ''); // e.g., 20250703
+    const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // e.g., 001 to 999
+    const orderNumber = `DOMI-${datePart}-${randomPart}`;
+
 
     const order = await createWebOrder({
       ...orderData,
