@@ -31,6 +31,18 @@ const typeMap = {
   'Litter': 'Litter'
 };
 
+// Obtener todas las marcas
+router.get('/brands', async (req, res) => {
+  try {
+    const query = 'SELECT id, name, image_url AS image FROM brands ORDER BY name';
+    const result = await pool.query(query);
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error en /brands:', error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Obtener todos los productos (con soporte para paginación y filtrado)
 router.get('/products', async (req, res) => {
   try {
