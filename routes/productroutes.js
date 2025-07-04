@@ -43,7 +43,7 @@ router.get('/brands', async (req, res) => {
 router.get('/products', async (req, res) => {
   try {
     const { category, brand_id, limit = 25, offset = 0 } = req.query;
-    console.log('Parámetros recibidos:', { category, brand_id, limit, offset });
+    // console.log('Parámetros recibidos:', { category, brand_id, limit, offset });
     let query = `
       SELECT 
         p.id,
@@ -106,8 +106,8 @@ router.get('/products', async (req, res) => {
     query += ' LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
     params.push(Number(limit), Number(offset));
 
-    console.log('Consulta SQL:', query);
-    console.log('Parámetros SQL:', params);
+    // console.log('Consulta SQL:', query);
+    // console.log('Parámetros SQL:', params);
     const result = await pool.query(query, params);
     const transformed = result.rows.map(row => transformProduct(row));
 
@@ -121,7 +121,7 @@ router.get('/products', async (req, res) => {
     const totalResult = await pool.query(countQuery, countParams);
     const total = parseInt(totalResult.rows[0].count);
 
-    console.log('Productos encontrados:', transformed.length);
+    // console.log('Productos encontrados:', transformed.length);
     res.status(200).json({
       products: transformed,
       total,
@@ -138,7 +138,7 @@ router.get('/products/:brand_id', async (req, res) => {
   try {
     const { brand_id } = req.params;
     const { limit = 25, offset = 0 } = req.query;
-    console.log('Parámetros recibidos:', { brand_id, limit, offset });
+    // console.log('Parámetros recibidos:', { brand_id, limit, offset });
 
     if (!brand_id || isNaN(Number(brand_id))) {
       return res.status(400).json({ message: 'ID de marca inválido' });
@@ -189,8 +189,8 @@ router.get('/products/:brand_id', async (req, res) => {
     `;
     const params = [Number(brand_id), Number(limit), Number(offset)];
 
-    console.log('Consulta SQL:', query);
-    console.log('Parámetros SQL:', params);
+    // console.log('Consulta SQL:', query);
+    // console.log('Parámetros SQL:', params);
     const result = await pool.query(query, params);
     const transformed = result.rows.map(row => transformProduct(row));
 
@@ -198,14 +198,13 @@ router.get('/products/:brand_id', async (req, res) => {
     const totalResult = await pool.query(countQuery, [Number(brand_id)]);
     const total = parseInt(totalResult.rows[0].count);
 
-    console.log('Productos encontrados:', transformed.length);
+    // console.log('Productos encontrados:', transformed.length);
     res.status(200).json({
       products: transformed,
       total,
       totalPages: Math.ceil(total / Number(limit))
     });
   } catch (error) {
-    console.error('Error en /products/:brand_id:', error.stack);
     res.status(500).json({ message: error.message, stack: error.stack });
   }
 });

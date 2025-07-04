@@ -6,7 +6,7 @@ const router = express.Router();
 
 // Ruta protegida para crear un pedido
 router.post('/orders', authenticateToken, async (req, res) => {
-  console.log('Received body:', req.body);
+  // console.log('Received body:', req.body);
   try {
     const orderData = {
       user_id: req.user.id,
@@ -16,7 +16,7 @@ router.post('/orders', authenticateToken, async (req, res) => {
       payment_method: req.body.paymentMethod,
       total: req.body.total
     };
-    console.log('Order Data:', orderData);
+    // console.log('Order Data:', orderData);
     const order = await WebOrderService.createOrder(orderData);
     res.status(201).json({ message: 'Order placed successfully', order });
   } catch (error) {
