@@ -3,7 +3,6 @@ import pool from '../config/db.js';
 
 const router = express.Router();
 
-// Función para transformar los datos de la base de datos
 const transformProduct = (row) => ({
   id: row.id,
   title: row.title,
@@ -23,7 +22,6 @@ const transformProduct = (row) => ({
   }
 });
 
-// Mapeo de categorías de la URL a tipos en la base de datos
 const typeMap = {
   'DryFood': 'Pet Food',
   'WetFood': 'Wet Food',
@@ -31,7 +29,6 @@ const typeMap = {
   'Litter': 'Litter'
 };
 
-// Obtener todas las marcas
 router.get('/brands', async (req, res) => {
   try {
     const query = 'SELECT id, name, image_url AS image FROM brands ORDER BY name';
@@ -43,10 +40,10 @@ router.get('/brands', async (req, res) => {
   }
 });
 
-// Obtener todos los productos (con soporte para paginación y filtrado)
 router.get('/products', async (req, res) => {
   try {
-    const { category, limit = 25, offset = 0 } = req.query;
+    const { category, brand_id, limit = 25, offset = 0 } = req.query;
+    console.log('Parámetros recibidos:', { category, brand_id, limit, offset });
     let query = `
       SELECT 
         p.id,
@@ -90,10 +87,15 @@ router.get('/products', async (req, res) => {
     let params = [];
     let whereClauses = [];
 
-    if (category) {
+    if (category && category !== 'all') {
       const mappedCategory = typeMap[category] || category;
       whereClauses.push('p.category = $' + (params.length + 1));
       params.push(mappedCategory);
+    }
+
+    if (brand_id) {
+      whereClauses.push('p.brand_id = $' + (params.length + 1));
+      params.push(Number(brand_id));
     }
 
     if (whereClauses.length > 0) {
@@ -104,11 +106,13 @@ router.get('/products', async (req, res) => {
     query += ' LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
     params.push(Number(limit), Number(offset));
 
+    console.log('Consulta SQL:', query);
+    console.log('Parámetros SQL:', params);
     const result = await pool.query(query, params);
     const transformed = result.rows.map(row => transformProduct(row));
 
-    // Calculate total independently
     let countQuery = 'SELECT COUNT(DISTINCT p.id) FROM products p';
+    countQuery += ' LEFT JOIN brands b ON p.brand_id = b.id';
     let countParams = [];
     if (whereClauses.length > 0) {
       countQuery += ' WHERE ' + whereClauses.join(' AND ');
@@ -117,6 +121,7 @@ router.get('/products', async (req, res) => {
     const totalResult = await pool.query(countQuery, countParams);
     const total = parseInt(totalResult.rows[0].count);
 
+    console.log('Productos encontrados:', transformed.length);
     res.status(200).json({
       products: transformed,
       total,
@@ -128,7 +133,83 @@ router.get('/products', async (req, res) => {
   }
 });
 
-// Obtener un producto por ID
+// Nueva ruta para filtrar productos por brand_id
+router.get('/products/:brand_id', async (req, res) => {
+  try {
+    const { brand_id } = req.params;
+    const { limit = 25, offset = 0 } = req.query;
+    console.log('Parámetros recibidos:', { brand_id, limit, offset });
+
+    if (!brand_id || isNaN(Number(brand_id))) {
+      return res.status(400).json({ message: 'ID de marca inválido' });
+    }
+
+    let query = `
+      SELECT 
+        p.id,
+        p.title,
+        p.description,
+        p.category,
+        p.type,
+        p.animal_category,
+        b.name AS brand_name,
+        COALESCE(
+          (SELECT json_agg(
+            json_build_object(
+              'size_id', ps.size_id,
+              'size', ps.size,
+              'price', ps.price,
+              'stock_quantity', ps.stock_quantity,
+              'image_url', ps.image_url
+            )
+          ) 
+          FROM product_sizes ps 
+          WHERE ps.product_id = p.id
+          ), '[]'::json
+        ) AS sizes,
+        COALESCE(
+          (SELECT json_agg(
+            json_build_object(
+              'image_id', i.image_id,
+              'image_url', i.image_url
+            )
+          ) 
+          FROM images i 
+          WHERE i.product_id = p.id
+          ), '[]'::json
+        ) AS images,
+        MIN(ps.price) AS min_price,
+        SUM(ps.stock_quantity) AS total_stock
+      FROM products p
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN product_sizes ps ON p.id = ps.product_id
+      WHERE p.brand_id = $1
+      GROUP BY p.id, p.title, p.description, p.category, p.type, p.animal_category, b.name
+      LIMIT $2 OFFSET $3
+    `;
+    const params = [Number(brand_id), Number(limit), Number(offset)];
+
+    console.log('Consulta SQL:', query);
+    console.log('Parámetros SQL:', params);
+    const result = await pool.query(query, params);
+    const transformed = result.rows.map(row => transformProduct(row));
+
+    const countQuery = 'SELECT COUNT(DISTINCT p.id) FROM products p WHERE p.brand_id = $1';
+    const totalResult = await pool.query(countQuery, [Number(brand_id)]);
+    const total = parseInt(totalResult.rows[0].count);
+
+    console.log('Productos encontrados:', transformed.length);
+    res.status(200).json({
+      products: transformed,
+      total,
+      totalPages: Math.ceil(total / Number(limit))
+    });
+  } catch (error) {
+    console.error('Error en /products/:brand_id:', error.stack);
+    res.status(500).json({ message: error.message, stack: error.stack });
+  }
+});
+
 router.get('/product/:id', async (req, res) => {
   try {
     const { id } = req.params;
