@@ -3,7 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import productRoutes from './routes/productroutes.js';
 import userRoutes from './routes/userRoutes.js';
-import orderRoutes from './routes/orderRoutes.js'; // Nueva ruta
+import orderRoutes from './routes/orderRoutes.js';
+import guestOrderRoutes from './routes/guestOrderRoutes.js'; 
 import errorHandler from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -14,10 +15,10 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
-// Usar rutas
 app.use('/api', productRoutes);
 app.use('/api', userRoutes);
-app.use('/api', orderRoutes); // Agregar rutas de pedidos
+app.use('/api', orderRoutes);
+app.use('/api', guestOrderRoutes); 
 
 app.get('/', (req, res) => {
   res.send('¡Backend conectado a Neon Tech!');

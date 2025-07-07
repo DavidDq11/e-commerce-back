@@ -9,10 +9,13 @@ export const createWebOrder = async (orderData) => {
     payment_method,
     total,
     order_number,
-    transaction_id
+    transaction_id,
   } = orderData;
 
-  // Validar que los campos JSON sean objetos válidos
+  // Validar campos requeridos
+  if (!items || !shipping_address || !payment_method || !total) {
+    throw new Error('Missing required order data');
+  }
   if (typeof items !== 'object' || items === null) {
     throw new Error('Invalid items format. Must be a valid JSON object or array.');
   }
@@ -23,7 +26,6 @@ export const createWebOrder = async (orderData) => {
     throw new Error('Invalid billing_address format. Must be a valid JSON object.');
   }
 
-  // Serializar explícitamente los objetos JSON
   const serializedItems = JSON.stringify(items);
   const serializedShippingAddress = JSON.stringify(shipping_address);
   const serializedBillingAddress = billing_address ? JSON.stringify(billing_address) : null;
@@ -34,14 +36,14 @@ export const createWebOrder = async (orderData) => {
     RETURNING id, user_id, items, shipping_address, billing_address, payment_method, total, created_at, status, order_number, transaction_id;
   `;
   const values = [
-    user_id,
+    user_id || null,
     serializedItems,
     serializedShippingAddress,
     serializedBillingAddress,
     payment_method,
     total,
     order_number || `WEB-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    transaction_id
+    transaction_id,
   ];
 
   try {
