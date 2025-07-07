@@ -3,7 +3,7 @@ import { createWebOrder } from '../models/web-order.js';
 export class WebOrderService {
   static async createOrder(orderData) {
     // Validar datos básicos
-    if (!orderData.user_id || !orderData.items || !orderData.shipping_address || !orderData.payment_method || !orderData.total) {
+    if (!orderData.items || !orderData.shipping_address || !orderData.payment_method || !orderData.total) {
       throw new Error('Missing required order data');
     }
 
