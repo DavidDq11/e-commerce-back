@@ -42,8 +42,7 @@ router.get('/brands', async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
-    const { category, brand_id, limit = 25, offset = 0 } = req.query;
-    // console.log('Parámetros recibidos:', { category, brand_id, limit, offset });
+    const { category, brand_id, limit = 25, offset = 0, minPrice, maxPrice } = req.query;
     let query = `
       SELECT 
         p.id,
@@ -103,25 +102,50 @@ router.get('/products', async (req, res) => {
     }
 
     query += ' GROUP BY p.id, p.title, p.description, p.category, p.type, p.animal_category, b.name';
+
+    // Agregar filtros de precio con HAVING
+    if (minPrice || maxPrice) {
+      query += ' HAVING ';
+      if (minPrice) {
+        query += 'MIN(ps.price) >= $' + (params.length + 1);
+        params.push(Number(minPrice));
+      }
+      if (maxPrice) {
+        if (minPrice) query += ' AND ';
+        query += 'MIN(ps.price) <= $' + (params.length + 1);
+        params.push(Number(maxPrice));
+      }
+    }
+
     query += ' LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
     params.push(Number(limit), Number(offset));
 
-    // console.log('Consulta SQL:', query);
-    // console.log('Parámetros SQL:', params);
     const result = await pool.query(query, params);
     const transformed = result.rows.map(row => transformProduct(row));
 
     let countQuery = 'SELECT COUNT(DISTINCT p.id) FROM products p';
     countQuery += ' LEFT JOIN brands b ON p.brand_id = b.id';
+    countQuery += ' LEFT JOIN product_sizes ps ON p.id = ps.product_id';
     let countParams = [];
     if (whereClauses.length > 0) {
       countQuery += ' WHERE ' + whereClauses.join(' AND ');
-      countParams = params.slice(0, params.length - 2);
+      countParams = params.slice(0, params.length - (minPrice || maxPrice ? 4 : 2));
+    }
+    if (minPrice || maxPrice) {
+      countQuery += (whereClauses.length > 0 ? ' AND ' : ' WHERE ') + 'EXISTS (SELECT 1 FROM product_sizes ps2 WHERE ps2.product_id = p.id';
+      if (minPrice) {
+        countQuery += ' AND ps2.price >= $' + (countParams.length + 1);
+        countParams.push(Number(minPrice));
+      }
+      if (maxPrice) {
+        countQuery += ' AND ps2.price <= $' + (countParams.length + 1);
+        countParams.push(Number(maxPrice));
+      }
+      countQuery += ')';
     }
     const totalResult = await pool.query(countQuery, countParams);
     const total = parseInt(totalResult.rows[0].count);
 
-    // console.log('Productos encontrados:', transformed.length);
     res.status(200).json({
       products: transformed,
       total,
