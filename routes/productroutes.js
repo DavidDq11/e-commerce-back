@@ -19,7 +19,8 @@ const transformProduct = (row) => ({
   rating: {
     rate: 0,
     count: 0
-  }
+  },
+  size: row.sizes && row.sizes.length > 0 ? row.sizes[0].size : null
 });
 
 const typeMap = {
