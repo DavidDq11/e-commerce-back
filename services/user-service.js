@@ -1,5 +1,5 @@
 // services/user-service.js
-import { createUser, findUserByEmail } from '../models/user.js';
+import { createUser, findUserByEmail, findUserById } from '../models/user.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -33,5 +33,9 @@ export class UserService {
                 last_name: user.last_name
             }
         };
+    }
+
+    static async findUserById(id) {
+        return await findUserById(id); 
     }
 }
