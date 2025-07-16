@@ -28,3 +28,19 @@ export const findUserById = async (id) => {
   const result = await pool.query(query, [id]);
   return result.rows[0];
 };
+
+export const updateUser = async (id, userData) => {
+  const { first_name, last_name, phone, city, state, address } = userData;
+  const query = `
+    UPDATE users
+    SET first_name = $1, last_name = $2, phone = $3, city = $4, state = $5, address = $6
+    WHERE id = $7
+    RETURNING id, first_name, last_name, email, phone, city, state, address;
+  `;
+  const values = [first_name, last_name, phone || null, city || null, state || null, address || null, id];
+  const result = await pool.query(query, values);
+  if (!result.rows[0]) {
+    throw new Error('User not found');
+  }
+  return result.rows[0];
+};

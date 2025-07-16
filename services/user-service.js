@@ -1,5 +1,5 @@
 // services/user-service.js
-import { createUser, findUserByEmail, findUserById } from '../models/user.js';
+import { createUser, findUserByEmail, findUserById, updateUser } from '../models/user.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -38,4 +38,13 @@ export class UserService {
     static async findUserById(id) {
         return await findUserById(id); 
     }
+
+    static async updateUser(id, userData) {
+    // Validar datos si es necesario (lógica de negocio)
+    const { first_name, last_name } = userData;
+    if (!first_name || !last_name) {
+      throw new Error('First name and last name are required');
+    }
+    return await updateUser(id, userData);
+  }
 }
