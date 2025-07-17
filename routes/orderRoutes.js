@@ -9,10 +9,10 @@ router.post('/orders', authenticateToken, async (req, res) => {
   try {
     const orderData = {
       user_id: req.user.id,
-      items: req.body.cart,
-      shipping_address: req.body.shippingAddress,
-      billing_address: req.body.billingAddress,
-      payment_method: req.body.paymentMethod,
+      items: req.body.items,
+      shipping_address: req.body.shipping_address, // Cambiar a shipping_address
+      billing_address: req.body.billing_address,
+      payment_method: req.body.payment_method,
       total: req.body.total,
     };
     const order = await WebOrderService.createOrder(orderData);
