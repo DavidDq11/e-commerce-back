@@ -30,6 +30,114 @@ const typeMap = {
   'Litter': 'Litter'
 };
 
+router.get('/search', async (req, res) => {
+  try {
+    const { q: query } = req.query;
+    if (!query || typeof query !== 'string' || query.trim() === '') {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const searchTerm = query.toLowerCase().trim();
+    const keywords = searchTerm.split(/\s+/); // Separar por espacios
+    let params = [];
+    let whereClauses = [];
+
+    // Base de la consulta
+    let sqlQuery = `
+      SELECT 
+        p.id,
+        p.title,
+        p.description,
+        p.category,
+        p.type,
+        p.animal_category,
+        b.name AS brand_name,
+        COALESCE(
+          (SELECT json_agg(
+            json_build_object(
+              'size_id', ps.size_id,
+              'size', ps.size,
+              'price', ps.price,
+              'stock_quantity', ps.stock_quantity,
+              'image_url', ps.image_url
+            )
+          ) 
+          FROM product_sizes ps 
+          WHERE ps.product_id = p.id
+          ), '[]'::json
+        ) AS sizes,
+        COALESCE(
+          (SELECT json_agg(
+            json_build_object(
+              'image_id', i.image_id,
+              'image_url', i.image_url
+            )
+          ) 
+          FROM images i 
+          WHERE i.product_id = p.id
+          ), '[]'::json
+        ) AS images,
+        MIN(ps.price) AS min_price,
+        SUM(ps.stock_quantity) AS total_stock
+      FROM products p
+      LEFT JOIN brands b ON p.brand_id = b.id
+      LEFT JOIN product_sizes ps ON p.id = ps.product_id
+    `;
+
+    // Mapa de palabras clave para animal_category
+    const animalCategoryMap = {
+      gato: 'Cat',
+      gatos: 'Cat',
+      perro: 'Dog',
+      perros: 'Dog',
+      caballo: 'Horse',
+      caballos: 'Horse',
+      pájaro: 'Bird',
+      pájaros: 'Bird',
+      vaca: 'Cow',
+      vacas: 'Cow'
+    };
+
+    // Buscar coincidencias en title, description, category y type
+    whereClauses.push(`
+      (LOWER(p.title) ILIKE $${params.length + 1}
+      OR LOWER(p.description) ILIKE $${params.length + 1}
+      OR LOWER(p.category) ILIKE $${params.length + 1}
+      OR LOWER(p.type) ILIKE $${params.length + 1})
+    `);
+    params.push(`%${searchTerm}%`);
+
+    // Filtrar por animal_category si se detecta una palabra clave
+    const matchedCategories = keywords
+      .map(keyword => animalCategoryMap[keyword])
+      .filter(category => category);
+    if (matchedCategories.length > 0) {
+      whereClauses.push(`p.animal_category IN (${matchedCategories.map((_, i) => `$${params.length + i + 1}`).join(', ')})`);
+      params.push(...matchedCategories);
+    }
+
+    // Combinar condiciones
+    if (whereClauses.length > 0) {
+      sqlQuery += ' WHERE ' + whereClauses.join(' AND ');
+    }
+
+    // Agrupar y limitar resultados
+    sqlQuery += `
+      GROUP BY p.id, p.title, p.description, p.category, p.type, p.animal_category, b.name
+      ORDER BY p.title
+      LIMIT 10
+    `;
+
+    const result = await pool.query(sqlQuery, params);
+    const products = result.rows.map(row => transformProduct(row));
+
+    res.status(200).json(products);
+  } catch (error) {
+    console.error('Error en /search:', error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.get('/brands', async (req, res) => {
   try {
     const query = 'SELECT id, name, image_url AS image FROM brands ORDER BY name';
