@@ -27,7 +27,9 @@ const typeMap = {
   'DryFood': 'Pet Food',
   'WetFood': 'Wet Food',
   'Snacks': 'Pet Treats',
-  'Litter': 'Litter'
+  'Litter': 'Litter',
+  'Accessories': 'Accessories', 
+  'Veterinary': 'Veterinary' 
 };
 
 router.get('/search', async (req, res) => {
