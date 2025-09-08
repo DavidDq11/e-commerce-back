@@ -84,6 +84,7 @@ router.get('/search', async (req, res) => {
       FROM products p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN product_sizes ps ON p.id = ps.product_id
+      WHERE p.is_active = true
     `;
 
     // Mapa de palabras clave para animal_category
@@ -120,7 +121,7 @@ router.get('/search', async (req, res) => {
 
     // Combinar condiciones
     if (whereClauses.length > 0) {
-      sqlQuery += ' WHERE ' + whereClauses.join(' AND ');
+      sqlQuery += ' AND ' + whereClauses.join(' AND ');
     }
 
     // Agrupar y limitar resultados
@@ -193,6 +194,7 @@ router.get('/products', async (req, res) => {
       FROM products p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN product_sizes ps ON p.id = ps.product_id
+      WHERE p.is_active = true
     `;
     let params = [];
     let whereClauses = [];
@@ -209,7 +211,7 @@ router.get('/products', async (req, res) => {
     }
 
     if (whereClauses.length > 0) {
-      query += ' WHERE ' + whereClauses.join(' AND ');
+      query += ' AND ' + whereClauses.join(' AND ');
     }
 
     query += ' GROUP BY p.id, p.title, p.description, p.category, p.type, p.animal_category, b.name';
@@ -237,13 +239,14 @@ router.get('/products', async (req, res) => {
     let countQuery = 'SELECT COUNT(DISTINCT p.id) FROM products p';
     countQuery += ' LEFT JOIN brands b ON p.brand_id = b.id';
     countQuery += ' LEFT JOIN product_sizes ps ON p.id = ps.product_id';
+    countQuery += ' WHERE p.is_active = true';
     let countParams = [];
     if (whereClauses.length > 0) {
-      countQuery += ' WHERE ' + whereClauses.join(' AND ');
+      countQuery += ' AND ' + whereClauses.join(' AND ');
       countParams = params.slice(0, params.length - (minPrice || maxPrice ? 4 : 2));
     }
     if (minPrice || maxPrice) {
-      countQuery += (whereClauses.length > 0 ? ' AND ' : ' WHERE ') + 'EXISTS (SELECT 1 FROM product_sizes ps2 WHERE ps2.product_id = p.id';
+      countQuery += (whereClauses.length > 0 ? ' AND ' : ' AND ') + 'EXISTS (SELECT 1 FROM product_sizes ps2 WHERE ps2.product_id = p.id';
       if (minPrice) {
         countQuery += ' AND ps2.price >= $' + (countParams.length + 1);
         countParams.push(Number(minPrice));
@@ -268,12 +271,10 @@ router.get('/products', async (req, res) => {
   }
 });
 
-// Nueva ruta para filtrar productos por brand_id
 router.get('/products/:brand_id', async (req, res) => {
   try {
     const { brand_id } = req.params;
     const { limit = 25, offset = 0 } = req.query;
-    // console.log('Parámetros recibidos:', { brand_id, limit, offset });
 
     if (!brand_id || isNaN(Number(brand_id))) {
       return res.status(400).json({ message: 'ID de marca inválido' });
@@ -318,22 +319,19 @@ router.get('/products/:brand_id', async (req, res) => {
       FROM products p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN product_sizes ps ON p.id = ps.product_id
-      WHERE p.brand_id = $1
+      WHERE p.brand_id = $1 AND p.is_active = true
       GROUP BY p.id, p.title, p.description, p.category, p.type, p.animal_category, b.name
       LIMIT $2 OFFSET $3
     `;
     const params = [Number(brand_id), Number(limit), Number(offset)];
 
-    // console.log('Consulta SQL:', query);
-    // console.log('Parámetros SQL:', params);
     const result = await pool.query(query, params);
     const transformed = result.rows.map(row => transformProduct(row));
 
-    const countQuery = 'SELECT COUNT(DISTINCT p.id) FROM products p WHERE p.brand_id = $1';
+    const countQuery = 'SELECT COUNT(DISTINCT p.id) FROM products p WHERE p.brand_id = $1 AND p.is_active = true';
     const totalResult = await pool.query(countQuery, [Number(brand_id)]);
     const total = parseInt(totalResult.rows[0].count);
 
-    // console.log('Productos encontrados:', transformed.length);
     res.status(200).json({
       products: transformed,
       total,
@@ -389,7 +387,7 @@ router.get('/product/:id', async (req, res) => {
       FROM products p
       LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN product_sizes ps ON p.id = ps.product_id
-      WHERE p.id = $1
+      WHERE p.id = $1 AND p.is_active = true
       GROUP BY p.id, p.title, p.description, p.category, p.type, p.animal_category, b.name
     `;
     const result = await pool.query(query, [id]);
