@@ -143,7 +143,13 @@ router.get('/search', async (req, res) => {
 
 router.get('/brands', async (req, res) => {
   try {
-    const query = 'SELECT id, name, image_url AS image FROM brands ORDER BY name';
+    const query = `
+      SELECT DISTINCT b.id, b.name, b.image_url AS image
+      FROM brands b
+      INNER JOIN products p ON b.id = p.brand_id
+      WHERE p.is_active = true
+      ORDER BY b.name
+    `;
     const result = await pool.query(query);
     res.status(200).json(result.rows);
   } catch (error) {
