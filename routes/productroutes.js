@@ -23,14 +23,30 @@ const transformProduct = (row) => ({
   size: row.sizes && row.sizes.length > 0 ? row.sizes[0].size : null
 });
 
-const typeMap = {
-  'DryFood': 'Pet Food',
-  'WetFood': 'Wet Food',
-  'Snacks': 'Pet Treats',
-  'Litter': 'Litter',
-  'Accessories': 'Accessories', 
-  'Veterinary': 'Veterinary' 
-};
+// Valores válidos para categorías, tipos y categorías de animales
+const VALID_CATEGORIES = [
+  'Alimentos Secos',
+  'Alimentos Húmedos',
+  'Snacks',
+  'Arena para Gatos',
+  'Accesorios',
+  'Productos Veterinarios'
+];
+const VALID_TYPES = ['Alimentos', 'Snack', 'Juguete', 'Cuidado', 'Arena'];
+const VALID_ANIMAL_CATEGORIES = ['Perro', 'Gato', 'Hámster', 'Pájaro', 'Caballo', 'Vaca', 'Otros'];
+
+router.get('/valid-values', async (req, res) => {
+  try {
+    res.status(200).json({
+      categories: VALID_CATEGORIES,
+      types: VALID_TYPES,
+      animalCategories: VALID_ANIMAL_CATEGORIES
+    });
+  } catch (error) {
+    console.error('Error en /valid-values:', error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
 
 router.get('/search', async (req, res) => {
   try {
@@ -40,11 +56,10 @@ router.get('/search', async (req, res) => {
     }
 
     const searchTerm = query.toLowerCase().trim();
-    const keywords = searchTerm.split(/\s+/); // Separar por espacios
+    const keywords = searchTerm.split(/\s+/);
     let params = [];
     let whereClauses = [];
 
-    // Base de la consulta
     let sqlQuery = `
       SELECT 
         p.id,
@@ -87,44 +102,19 @@ router.get('/search', async (req, res) => {
       WHERE p.is_active = true
     `;
 
-    // Mapa de palabras clave para animal_category
-    const animalCategoryMap = {
-      gato: 'Cat',
-      gatos: 'Cat',
-      perro: 'Dog',
-      perros: 'Dog',
-      caballo: 'Horse',
-      caballos: 'Horse',
-      pájaro: 'Bird',
-      pájaros: 'Bird',
-      vaca: 'Cow',
-      vacas: 'Cow'
-    };
-
-    // Buscar coincidencias en title, description, category y type
     whereClauses.push(`
       (LOWER(p.title) ILIKE $${params.length + 1}
       OR LOWER(p.description) ILIKE $${params.length + 1}
       OR LOWER(p.category) ILIKE $${params.length + 1}
-      OR LOWER(p.type) ILIKE $${params.length + 1})
+      OR LOWER(p.type) ILIKE $${params.length + 1}
+      OR LOWER(p.animal_category) ILIKE $${params.length + 1})
     `);
     params.push(`%${searchTerm}%`);
 
-    // Filtrar por animal_category si se detecta una palabra clave
-    const matchedCategories = keywords
-      .map(keyword => animalCategoryMap[keyword])
-      .filter(category => category);
-    if (matchedCategories.length > 0) {
-      whereClauses.push(`p.animal_category IN (${matchedCategories.map((_, i) => `$${params.length + i + 1}`).join(', ')})`);
-      params.push(...matchedCategories);
-    }
-
-    // Combinar condiciones
     if (whereClauses.length > 0) {
       sqlQuery += ' AND ' + whereClauses.join(' AND ');
     }
 
-    // Agrupar y limitar resultados
     sqlQuery += `
       GROUP BY p.id, p.title, p.description, p.category, p.type, p.animal_category, b.name
       ORDER BY p.title
@@ -160,7 +150,7 @@ router.get('/brands', async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
-    const { category, brand_id, limit = 25, offset = 0, minPrice, maxPrice } = req.query;
+    const { category, type, animal_category, brand_id, limit = 25, offset = 0, minPrice, maxPrice } = req.query;
     let query = `
       SELECT 
         p.id,
@@ -205,12 +195,18 @@ router.get('/products', async (req, res) => {
     let params = [];
     let whereClauses = [];
 
-    if (category && category !== 'all') {
-      const mappedCategory = typeMap[category] || category;
+    if (category && VALID_CATEGORIES.includes(category)) {
       whereClauses.push('p.category = $' + (params.length + 1));
-      params.push(mappedCategory);
+      params.push(category);
     }
-
+    if (type && VALID_TYPES.includes(type)) {
+      whereClauses.push('p.type = $' + (params.length + 1));
+      params.push(type);
+    }
+    if (animal_category && VALID_ANIMAL_CATEGORIES.includes(animal_category)) {
+      whereClauses.push('p.animal_category = $' + (params.length + 1));
+      params.push(animal_category);
+    }
     if (brand_id) {
       whereClauses.push('p.brand_id = $' + (params.length + 1));
       params.push(Number(brand_id));
@@ -222,7 +218,6 @@ router.get('/products', async (req, res) => {
 
     query += ' GROUP BY p.id, p.title, p.description, p.category, p.type, p.animal_category, b.name';
 
-    // Agregar filtros de precio con HAVING
     if (minPrice || maxPrice) {
       query += ' HAVING ';
       if (minPrice) {
