@@ -35,6 +35,16 @@ const VALID_CATEGORIES = [
 const VALID_TYPES = ['Alimentos', 'Snack', 'Juguete', 'Cuidado', 'Arena'];
 const VALID_ANIMAL_CATEGORIES = ['Perro', 'Gato', 'Hámster', 'Pájaro', 'Caballo', 'Vaca', 'Otros'];
 
+// Función para normalizar strings (remueve acentos y convierte a lowercase)
+const normalizeString = (str) => {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+};
+
+// Valores válidos normalizados
+const NORMALIZED_VALID_CATEGORIES = VALID_CATEGORIES.map(normalizeString);
+const NORMALIZED_VALID_TYPES = VALID_TYPES.map(normalizeString);
+const NORMALIZED_VALID_ANIMAL_CATEGORIES = VALID_ANIMAL_CATEGORIES.map(normalizeString);
+
 router.get('/valid-values', async (req, res) => {
   try {
     res.status(200).json({
@@ -195,18 +205,36 @@ router.get('/products', async (req, res) => {
     let params = [];
     let whereClauses = [];
 
-    if (category && VALID_CATEGORIES.includes(category)) {
-      whereClauses.push('p.category = $' + (params.length + 1));
-      params.push(category);
+    // Normalizar y validar category
+    if (category) {
+      const normalizedCategory = normalizeString(category);
+      const index = NORMALIZED_VALID_CATEGORIES.indexOf(normalizedCategory);
+      if (index !== -1) {
+        whereClauses.push('p.category = $' + (params.length + 1));
+        params.push(VALID_CATEGORIES[index]);
+      }
     }
-    if (type && VALID_TYPES.includes(type)) {
-      whereClauses.push('p.type = $' + (params.length + 1));
-      params.push(type);
+
+    // Normalizar y validar type
+    if (type) {
+      const normalizedType = normalizeString(type);
+      const index = NORMALIZED_VALID_TYPES.indexOf(normalizedType);
+      if (index !== -1) {
+        whereClauses.push('p.type = $' + (params.length + 1));
+        params.push(VALID_TYPES[index]);
+      }
     }
-    if (animal_category && VALID_ANIMAL_CATEGORIES.includes(animal_category)) {
-      whereClauses.push('p.animal_category = $' + (params.length + 1));
-      params.push(animal_category);
+
+    // Normalizar y validar animal_category
+    if (animal_category) {
+      const normalizedAnimal = normalizeString(animal_category);
+      const index = NORMALIZED_VALID_ANIMAL_CATEGORIES.indexOf(normalizedAnimal);
+      if (index !== -1) {
+        whereClauses.push('p.animal_category = $' + (params.length + 1));
+        params.push(VALID_ANIMAL_CATEGORIES[index]);
+      }
     }
+
     if (brand_id) {
       whereClauses.push('p.brand_id = $' + (params.length + 1));
       params.push(Number(brand_id));
